@@ -1,5 +1,6 @@
 package io.example.tennis;
 
+import lombok.Getter;
 import org.hibernate.Session;
 import org.hibernate.query.Query;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -10,6 +11,7 @@ import javax.persistence.EntityManager;
 import java.util.List;
 
 @Service
+@Getter
 public class PlayerService {
 
     @Autowired
