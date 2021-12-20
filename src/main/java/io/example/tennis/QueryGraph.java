@@ -4,14 +4,12 @@ import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.commons.lang3.reflect.FieldUtils;
-import org.apache.commons.lang3.tuple.ImmutablePair;
-import org.apache.commons.lang3.tuple.Pair;
 
 import javax.persistence.EntityManager;
 import java.lang.reflect.Field;
 import java.util.Collection;
 import java.util.HashSet;
-import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -57,31 +55,35 @@ public class QueryGraph<T> {
      * This is what Hibernate would do for you if you were to call the getter on the property, but this method does the
      * query for all objects at once, avoiding the N+1 queries problem.
      *
-     * @param field the name of the field
-     * @param uClass  the class of the referenced objects
-     * @param <U>   the type of the property
+     * @param fieldName the name of the field
+     * @param uClass    the class of the referenced objects
+     * @param <U>       the type of the property
      */
     public <U> QueryGraph<U> joinFetch(
-            String field,
+            String fieldName,
             Class<U> uClass
     ) {
-        //noinspection unchecked
+        //noinspection unused
         var ignored = entityManager.createQuery(
-                                "from " + tClass.getSimpleName() + " t " +
-                                "join fetch t." + field + " u " +
+                        "from " + tClass.getSimpleName() + " t " +
+                                "join fetch t." + fieldName + " u " +
                                 "where t in :entities"
                 )
                 .setParameter("entities", rootCollection)
                 .getResultList();
-        return rootCollection.stream()
-                .map(e -> {
+        Field field = FieldUtils.getField(tClass, fieldName, true);
+        Set<U> newCollection = rootCollection.stream()
+                .map(el -> {
                     try {
-                        Field field = FieldUtils.getField(employee.getClass(), field, true);
-                        firstName = (String) field.get(employee);
-                    } catch (Exception e) {
+                        //noinspection unchecked
+                        return (U) field.get(el);
+                    } catch (IllegalArgumentException | IllegalAccessException e) {
                         System.err.print(ExceptionUtils.getStackTrace(e));
+                        return null;
                     }
                 })
-        return new QueryGraph<>(pairs, uClass, entityManager);
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+        return new QueryGraph<>(newCollection, uClass, entityManager);
     }
 }
